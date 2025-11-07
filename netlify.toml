@@ -9,12 +9,6 @@
   NODE_OPTIONS = "--openssl-legacy-provider"
   NODE_ENV = "production"
 
-# Handle SPA routing - redirect all routes to index.html
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
 # Required for SvelteKit
 [[plugins]]
   package = "@sveltejs/adapter-netlify"
