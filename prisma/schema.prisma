@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DeviceCondition {
+  NEW
+  USED
+  REFURBISHED
+}
+
+enum DeviceStatus {
+  IN_STOCK
+  SOLD
+  RESERVED
+  MAINTENANCE
+}
+
+enum DeviceColor {
+  BLACK
+  WHITE
+  GOLD
+  SILVER
+  BLUE
+  RED
+  GREEN
+  OTHER
+}
+
+model Device {
+  id          String         @id @default(uuid())
+  imei        String         @unique
+  brand       String
+  model       String
+  color       DeviceColor
+  capacity    String         // e.g., "64GB", "128GB"
+  condition   DeviceCondition
+  status      DeviceStatus   @default(IN_STOCK)
+  price       Float
+  cost        Float
+  accessories String[]       // List of included accessories
+  notes       String?        // Additional notes
+  images      String[]       // URLs to device images
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  @@index([brand, model])
+  @@index([status])
+  @@index([createdAt])
+}
