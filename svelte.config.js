@@ -9,20 +9,11 @@ const config = {
   kit: {
     // Use the Netlify adapter for deployment
     adapter: adapter({
-      // Use Netlify Edge Functions (false for regular Netlify Functions)
+      // Use regular Netlify Functions (set to true for Edge Functions)
       edge: false,
-      
-      // If you need to include files that aren't in the static directory,
-      // you can specify additional directories to include in the build output
-      // This is useful for including server-side code or other assets
-      include: ['**/*.js', '**/*.ts']
-    }),
-    
-    // Ensure client-side routing works with Netlify redirects
-    alias: {
-      '$lib': './src/lib',
-      '$lib/*': './src/lib/*'
-    }
+      // Keep split disabled for simpler deployment
+      split: false
+    })
   }
 };
 

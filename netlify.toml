@@ -1,20 +1,18 @@
 [build]
   command = "npm run build"
-  publish = ".svelte-kit/output/static"
-  functions = ".svelte-kit/output/server"
+  publish = "build"
 
 [build.environment]
   NODE_VERSION = "20"
-  NPM_FLAGS = "--legacy-peer-deps"
-  NODE_OPTIONS = "--openssl-legacy-provider"
-  NODE_ENV = "production"
+  NPM_FLAGS = "--include=dev"
+  NODE_ENV = "development"
 
 # Development server settings
 [dev]
   framework = "#custom"
   targetPort = 5173
   port = 8888
-  publish = ".svelte-kit/output/static"
+  publish = "build"
   command = "npm run dev"
 
 # Environment overrides for different contexts
@@ -26,7 +24,3 @@
 
 [context.branch-deploy.environment]
   NODE_ENV = "development"
-
-# Required for SvelteKit
-[functions]
-  node_bundler = "esbuild"
