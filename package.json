@@ -14,16 +14,22 @@
 		"lint": "prettier --check . && eslint .",
 		"seed": "ts-node prisma/seed.ts"
 	},
+	"dependencies": {
+		"@prisma/client": "^6.19.0",
+		"@sveltejs/adapter-netlify": "^5.2.4",
+		"@sveltejs/kit": "^2.47.1",
+		"@prisma/internals": "^6.19.0",
+		"dotenv": "^17.2.3"
+	},
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",
 		"@eslint/js": "^9.38.0",
-		"@sveltejs/adapter-netlify": "^5.2.4",
-		"@sveltejs/kit": "^2.47.1",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.14",
 		"@types/node": "^22.19.0",
+		"autoprefixer": "^10.4.19",
 		"eslint": "^9.38.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.12.4",
@@ -39,10 +45,5 @@
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.46.1",
 		"vite": "^7.1.10"
-	},
-	"dependencies": {
-		"@prisma/client": "^6.19.0",
-		"@prisma/internals": "^6.19.0",
-		"dotenv": "^17.2.3"
 	}
 }
