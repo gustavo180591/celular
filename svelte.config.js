@@ -9,19 +9,13 @@ const config = {
   kit: {
     // Use the Netlify adapter for deployment
     adapter: adapter({
-      // Use Netlify Functions for server-side rendering
+      // Use Netlify Edge Functions (false for regular Netlify Functions)
       edge: false,
       
-      // Use Netlify Functions
-      functions: {
-        // Directory where Netlify will look for your serverless functions
-        directory: './netlify/functions',
-        // Node.js version to use for the functions
-        nodeVersion: '18',
-      },
-      
-      // Split your app into multiple functions for better performance
-      split: true
+      // If you need to include files that aren't in the static directory,
+      // you can specify additional directories to include in the build output
+      // This is useful for including server-side code or other assets
+      include: ['**/*.js', '**/*.ts']
     }),
     
     // Ensure client-side routing works with Netlify redirects

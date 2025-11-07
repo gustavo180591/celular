@@ -1,7 +1,7 @@
 [build]
   command = "npm run build"
-  publish = "build"
-  functions = "netlify/functions"
+  publish = ".svelte-kit/output/static"
+  functions = ".svelte-kit/output/server"
 
 [build.environment]
   NODE_VERSION = "20"
@@ -9,18 +9,12 @@
   NODE_OPTIONS = "--openssl-legacy-provider"
   NODE_ENV = "production"
 
-# Required for SvelteKit
-[[plugins]]
-  package = "@sveltejs/adapter-netlify"
-  [plugins.inputs]
-    external_node_modules = []
-
 # Development server settings
 [dev]
   framework = "#custom"
   targetPort = 5173
   port = 8888
-  publish = "build"
+  publish = ".svelte-kit/output/static"
   command = "npm run dev"
 
 # Environment overrides for different contexts
