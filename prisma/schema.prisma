@@ -9,7 +9,12 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Enable referential integrity in the database
+  // and add `relationMode = "prisma"` if using MongoDB
+  // relationMode = "prisma"
 }
+
+// ========== ENUMS ==========
 
 enum DeviceCondition {
   NEW
@@ -22,6 +27,10 @@ enum DeviceStatus {
   SOLD
   RESERVED
   MAINTENANCE
+  IN_TRANSIT
+  LOST
+  STOLEN
+  DAMAGED
 }
 
 enum DeviceColor {
@@ -32,27 +41,366 @@ enum DeviceColor {
   BLUE
   RED
   GREEN
+  PURPLE
+  GRAY
   OTHER
 }
 
+enum TransactionType {
+  PURCHASE
+  SALE
+  TRADE_IN
+  STOCK_ADJUSTMENT
+  RETURN
+  DAMAGED
+  LOST
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  DIGITAL_WALLET
+  FINANCING
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  CANCELLED
+  REFUNDED
+  FAILED
+}
+
+// ========== MODELS ==========
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  name          String
+  password      String
+  role          String       // admin, seller, manager, etc.
+  isActive      Boolean      @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // Relations
+  createdPurchases  Purchase[]       @relation("CreatedPurchases")
+  createdSales      Sale[]           @relation("CreatedSales")
+  stockMovements    StockMovement[]
+  tradeIns          TradeIn[]
+  deviceChecklists  DeviceChecklist[]
+  auditLogs         AuditLog[]
+  
+  @@index([email])
+  @@index([role])
+}
+
 model Device {
-  id          String         @id @default(uuid())
-  imei        String         @unique
-  brand       String
-  model       String
-  color       DeviceColor
-  capacity    String         // e.g., "64GB", "128GB"
-  condition   DeviceCondition
-  status      DeviceStatus   @default(IN_STOCK)
-  price       Float
-  cost        Float
-  accessories String[]       // List of included accessories
-  notes       String?        // Additional notes
-  images      String[]       // URLs to device images
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id              String         @id @default(uuid())
+  imei            String         @unique
+  imei2           String?        // For dual SIM devices
+  brand           String
+  model           String
+  color           DeviceColor
+  capacity        String         // e.g., "64GB", "128GB"
+  condition       DeviceCondition
+  cosmeticGrade   Int?           // 1-10 scale
+  status          DeviceStatus   @default(IN_STOCK)
+  price           Float
+  cost            Float
+  salePrice       Float?         // Final sale price after discounts
+  supplierId      String?        // If purchased from a supplier
+  supplierName    String?        // Denormalized for reporting
+  purchaseDate    DateTime?      // When it was purchased from supplier
+  saleDate        DateTime?      // When it was sold
+  locationId      String?        // Current location (store, warehouse, etc.)
+  locationName    String?        // Denormalized for reporting
+  accessories     String[]       // List of included accessories
+  notes           String?        // Additional notes
+  images          String[]       // URLs to device images
+  isImeiValid     Boolean?       // Luhn validation
+  hasIcLock       Boolean?       // iCloud/FRP lock
+  hasScreenDamage Boolean?
+  hasBodyDamage   Boolean?
+  hasBatteryIssues Boolean?
+  isRooted        Boolean?
+  isUnlocked      Boolean?
+  isDualSim       Boolean?
+  hasOriginalBox  Boolean?
+  hasWarranty     Boolean?
+  warrantyUntil   DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  // Relations
+  purchaseItems    PurchaseItem[]
+  saleItems        SaleItem[]
+  tradeInItems     TradeInItem[]
+  stockMovements   StockMovement[]
+  deviceChecklist  DeviceChecklist?
   
   @@index([brand, model])
   @@index([status])
+  @@index([createdAt])
+  @@index([saleDate])
+  @@index([purchaseDate])
+}
+
+model Supplier {
+  id           String     @id @default(uuid())
+  name         String
+  contactName  String?
+  email        String?
+  phone        String?
+  address      String?
+  taxId        String?    // CUIT/CUIL/DNI
+  notes        String?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  // Relations
+  purchases    Purchase[]
+  
+  @@index([name])
+  @@index([taxId])
+}
+
+model Customer {
+  id           String     @id @default(uuid())
+  name         String
+  email        String?
+  phone        String
+  address      String?
+  taxId        String?    // CUIT/CUIL/DNI
+  notes        String?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  // Relations
+  sales        Sale[]
+  tradeIns     TradeIn[]
+  
+  @@index([name])
+  @@index([phone])
+  @@index([taxId])
+}
+
+model Location {
+  id           String     @id @default(uuid())
+  name         String
+  address      String?
+  isActive     Boolean    @default(true)
+  isWarehouse  Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  // Relations
+  stockMovementsFrom StockMovement[] @relation("FromLocation")
+  stockMovementsTo   StockMovement[] @relation("ToLocation")
+  
+  @@index([name])
+}
+
+model Purchase {
+  id           String         @id @default(uuid())
+  invoiceNumber String?       // Número de factura
+  supplierId   String?
+  supplier     Supplier?      @relation(fields: [supplierId], references: [id])
+  date         DateTime       @default(now())
+  subtotal     Float
+  tax          Float          @default(0)
+  discount     Float          @default(0)
+  total        Float
+  notes        String?
+  createdById  String
+  createdBy    User           @relation("CreatedPurchases", fields: [createdById], references: [id])
+  status       String         @default("COMPLETED") // DRAFT, COMPLETED, CANCELLED
+  items        PurchaseItem[]
+  
+  @@index([invoiceNumber])
+  @@index([date])
+  @@index([supplierId])
+  @@index([createdById])
+}
+
+model PurchaseItem {
+  id           String     @id @default(uuid())
+  purchaseId   String
+  purchase     Purchase   @relation(fields: [purchaseId], references: [id])
+  deviceId     String
+  device       Device     @relation(fields: [deviceId], references: [id])
+  quantity     Int        @default(1)
+  unitCost     Float
+  totalCost    Float
+  notes        String?
+  
+  @@index([purchaseId])
+  @@index([deviceId])
+}
+
+model Sale {
+  id           String     @id @default(uuid())
+  customerId   String?
+  customer     Customer?  @relation(fields: [customerId], references: [id])
+  date         DateTime   @default(now())
+  subtotal     Float
+  tax          Float      @default(0)
+  discount     Float      @default(0)
+  total        Float
+  notes        String?
+  createdById  String
+  createdBy    User       @relation("CreatedSales", fields: [createdById], references: [id])
+  status       String     @default("COMPLETED") // DRAFT, COMPLETED, CANCELLED, REFUNDED
+  items        SaleItem[]
+  payments     Payment[]
+  
+  @@index([date])
+  @@index([customerId])
+  @@index([createdById])
+  @@index([status])
+}
+
+model SaleItem {
+  id           String     @id @default(uuid())
+  saleId       String
+  sale         Sale       @relation(fields: [saleId], references: [id])
+  deviceId     String
+  device       Device     @relation(fields: [deviceId], references: [id])
+  quantity     Int        @default(1)
+  unitPrice    Float
+  totalPrice   Float
+  notes        String?
+  
+  @@index([saleId])
+  @@index([deviceId])
+}
+
+model Payment {
+  id           String       @id @default(uuid())
+  saleId       String
+  sale         Sale         @relation(fields: [saleId], references: [id])
+  amount       Float
+  method       PaymentMethod
+  status       PaymentStatus @default(PENDING)
+  reference    String?      // Transaction ID, check number, etc.
+  notes        String?
+  paymentDate  DateTime     @default(now())
+  processedAt  DateTime?    // When the payment was actually processed
+  
+  @@index([saleId])
+  @@index([method])
+  @@index([status])
+  @@index([paymentDate])
+}
+
+model TradeIn {
+  id           String         @id @default(uuid())
+  customerId   String
+  customer     Customer       @relation(fields: [customerId], references: [id])
+  date         DateTime       @default(now())
+  subtotal     Float
+  tax          Float          @default(0)
+  discount     Float          @default(0)
+  total        Float
+  notes        String?
+  createdById  String
+  createdBy    User           @relation(fields: [createdById], references: [id])
+  status       String         @default("COMPLETED") // DRAFT, COMPLETED, CANCELLED
+  items        TradeInItem[]
+  
+  @@index([date])
+  @@index([customerId])
+  @@index([createdById])
+  @@index([status])
+}
+
+model TradeInItem {
+  id           String     @id @default(uuid())
+  tradeInId    String
+  tradeIn      TradeIn    @relation(fields: [tradeInId], references: [id])
+  deviceId     String
+  device       Device     @relation(fields: [deviceId], references: [id])
+  quantity     Int        @default(1)
+  unitValue    Float      // Estimated value of the trade-in device
+  totalValue   Float
+  notes        String?
+  
+  @@index([tradeInId])
+  @@index([deviceId])
+}
+
+model StockMovement {
+  id           String     @id @default(uuid())
+  deviceId     String
+  device       Device     @relation(fields: [deviceId], references: [id])
+  fromLocationId String?
+  fromLocation   Location? @relation("FromLocation", fields: [fromLocationId], references: [id])
+  toLocationId   String?
+  toLocation     Location? @relation("ToLocation", fields: [toLocationId], references: [id])
+  quantity     Int        @default(1)
+  type         TransactionType
+  referenceId  String?    // ID of the related transaction (purchase, sale, etc.)
+  referenceType String?    // Type of the related transaction
+  notes        String?
+  createdById  String
+  createdBy    User       @relation(fields: [createdById], references: [id])
+  createdAt    DateTime   @default(now())
+  
+  @@index([deviceId])
+  @@index([fromLocationId])
+  @@index([toLocationId])
+  @@index([type])
+  @@index([referenceId, referenceType])
+  @@index([createdAt])
+}
+
+model DeviceChecklist {
+  id           String     @id @default(uuid())
+  deviceId     String     @unique
+  device       Device     @relation(fields: [deviceId], references: [id])
+  screenOk     Boolean    @default(false)
+  batteryOk    Boolean    @default(false)
+  buttonsOk    Boolean    @default(false)
+  cameraOk     Boolean    @default(false)
+  microphoneOk Boolean    @default(false)
+  speakerOk    Boolean    @default(false)
+  wifiOk       Boolean    @default(false)
+  bluetoothOk  Boolean    @default(false)
+  gpsOk        Boolean    @default(false)
+  fingerprintOk Boolean   @default(false)
+  faceIdOk     Boolean    @default(false)
+  portsOk      Boolean    @default(false)
+  vibrationOk  Boolean    @default(false)
+  notes        String?
+  checkedById  String
+  checkedBy    User       @relation(fields: [checkedById], references: [id])
+  checkedAt    DateTime   @default(now())
+  
+  @@index([deviceId])
+}
+
+model AuditLog {
+  id           String     @id @default(uuid())
+  action       String     // CREATE, UPDATE, DELETE, LOGIN, etc.
+  entityType   String?    // Name of the affected entity (e.g., "Device", "Sale")
+  entityId     String?    // ID of the affected record
+  oldValue     Json?      // Previous value (for updates)
+  newValue     Json?      // New value
+  ipAddress    String?
+  userAgent    String?
+  userId       String?
+  user         User?      @relation(fields: [userId], references: [id])
+  createdAt    DateTime   @default(now())
+  
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([userId])
   @@index([createdAt])
 }
