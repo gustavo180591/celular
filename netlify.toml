@@ -5,7 +5,9 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  NPM_FLAGS = "--version"
+  NPM_FLAGS = "--legacy-peer-deps"
+  NODE_OPTIONS = "--openssl-legacy-provider"
+  NODE_ENV = "production"
 
 # Handle SPA routing - redirect all routes to index.html
 [[redirects]]
@@ -13,24 +15,30 @@
   to = "/index.html"
   status = 200
 
-# Required for SvelteKit serverless functions
+# Required for SvelteKit
 [[plugins]]
-  package = "@netlify/plugin-nextjs"
+  package = "@sveltejs/adapter-netlify"
+  [plugins.inputs]
+    external_node_modules = []
 
 # Development server settings
 [dev]
-  framework = "sveltekit"
+  framework = "#custom"
   targetPort = 5173
   port = 8888
   publish = "build"
   command = "npm run dev"
 
-# Environment variables (add your own in Netlify UI)
-[context.production.environment]
-  NODE_ENV = "production"
+# Environment overrides for different contexts
+[context.deploy-preview]
+  command = "npm install && npm run build"
 
 [context.deploy-preview.environment]
   NODE_ENV = "development"
 
 [context.branch-deploy.environment]
   NODE_ENV = "development"
+
+# Required for SvelteKit
+[functions]
+  node_bundler = "esbuild"

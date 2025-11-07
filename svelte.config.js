@@ -1,18 +1,18 @@
 import adapter from '@sveltejs/adapter-netlify';
-import { vitePreprocess } from '@sveltejs/kit/vite';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   // Enable Svelte preprocessors for PostCSS and other transformations
-  preprocess: vitePreprocess(),
+  preprocess: [vitePreprocess()],
 
   kit: {
     // Use the Netlify adapter for deployment
     adapter: adapter({
-      // Enable Edge Functions for server-side rendering
+      // Use Netlify Functions for server-side rendering
       edge: false,
       
-      // Use Netlify Functions for server-side rendering
+      // Use Netlify Functions
       functions: {
         // Directory where Netlify will look for your serverless functions
         directory: './netlify/functions',
@@ -28,8 +28,8 @@ const config = {
     alias: {
       '$lib': './src/lib',
       '$lib/*': './src/lib/*'
-    },
-  },
+    }
+  }
 };
 
 export default config;
